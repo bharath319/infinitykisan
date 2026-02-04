@@ -1,211 +1,338 @@
-import React, { useState } from 'react';
-
-import { TrendingUp, ArrowUpRight, ArrowDownRight, Search } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Search, TrendingUp, TrendingDown, MapPin, Calendar, Info, ShieldCheck } from 'lucide-react';
 import BackButton from '../components/BackButton';
 import styles from '../styles/PriceForecasting.module.css';
 import { useTranslation } from '../services/i18n';
-
 import { PRICE_DATABASE } from '../data/priceData';
 
+/**
+ * PriceForecasting Component
+ * Optimized for local farmers with multi-unit support, 
+ * and specific date-based forecasting.
+ */
 const PriceForecasting = () => {
-    const { t } = useTranslation();
-    const [crop, setCrop] = useState('');
-    const [state, setState] = useState('');
-    const [district, setDistrict] = useState('');
-    const [market, setMarket] = useState('');
-    const [rateType, setRateType] = useState('wholesale');
-    const [selectedDate, setSelectedDate] = useState('');
-    const [result, setResult] = useState(null);
+  const { t } = useTranslation();
+  const [crop, setCrop] = useState('');
+  const [state, setState] = useState('');
+  const [district, setDistrict] = useState('');
+  const [market, setMarket] = useState('');
+  const [rateType, setRateType] = useState('wholesale');
+  const [selectedDate, setSelectedDate] = useState('');
+  const [unit, setUnit] = useState('quintal'); // Supported: quintal, kg, tonne
+  const [result, setResult] = useState(null);
 
-    const crops = Object.keys(PRICE_DATABASE);
-    const states = crop ? Object.keys(PRICE_DATABASE[crop] || {}) : [];
-    const districts = state && crop ? Object.keys(PRICE_DATABASE[crop]?.[state] || {}) : [];
-    const markets = district && state && crop ? Object.keys(PRICE_DATABASE[crop]?.[state]?.[district] || {}) : [];
+  // Unit conversion factors relative to Quintal (100Kg)
+  const conversionFactors = {
+    quintal: 1,
+    kg: 0.01,
+    tonne: 10
+  };
 
-    const handleSearch = (e) => {
-        e.preventDefault();
-        if (!crop || !state || !district || !market) {
-            alert('Please fill all fields');
-            return;
-        }
+  const unitLabels = {
+    quintal: t('quintals') || 'Quintals',
+    kg: 'KG',
+    tonne: 'Tonne'
+  };
 
-        const priceData = PRICE_DATABASE[crop]?.[state]?.[district]?.[market];
-        if (!priceData) {
-            alert('No data found for this combination');
-            return;
-        }
+  // Derived memoized data for dropdown menus
+  const crops = useMemo(() => Object.keys(PRICE_DATABASE).sort(), []);
+  const states = useMemo(() => crop ? Object.keys(PRICE_DATABASE[crop] || {}).sort() : [], [crop]);
+  const districts = useMemo(() => (crop && state) ? Object.keys(PRICE_DATABASE[crop]?.[state] || {}).sort() : [], [crop, state]);
+  const markets = useMemo(() => (crop && state && district) ? Object.keys(PRICE_DATABASE[crop]?.[state]?.[district] || {}).sort() : [], [crop, state, district]);
 
-        let currentPrice = priceData[rateType];
-        const trendData = priceData.trend.map((price, idx) => ({
-            month: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'][idx],
-            price: price
-        }));
+  /**
+   * Handles the search submit and calculates predictive pricing
+   */
+  const handleSearch = (e) => {
+    e.preventDefault();
+    if (!crop || !state || !district || !market) return;
 
-        // Calculate price for selected date if provided
-        let priceForDate = currentPrice;
-        let dateLabel = t('current_price');
+    const priceData = PRICE_DATABASE[crop]?.[state]?.[district]?.[market];
+    if (!priceData) return;
 
-        if (selectedDate) {
-            const selected = new Date(selectedDate);
-            const today = new Date();
-            const diffDays = Math.floor((selected - today) / (1000 * 60 * 60 * 24));
+    const currentPrice = priceData[rateType];
+    const trend = priceData.trend || [];
 
-            if (diffDays < -180) {
-                // More than 6 months ago - use oldest trend data
-                priceForDate = Math.round(currentPrice * 0.85);
-                dateLabel = `${t('current_price')} on ${selected.toLocaleDateString('en-IN')}`;
-            } else if (diffDays < 0) {
-                // Historical (within 6 months) - interpolate from trend
-                const monthsAgo = Math.abs(Math.floor(diffDays / 30));
-                priceForDate = priceData.trend[Math.max(0, 5 - monthsAgo)] || currentPrice;
-                dateLabel = `${t('current_price')} on ${selected.toLocaleDateString('en-IN')}`;
-            } else if (diffDays > 180) {
-                // More than 6 months in future
-                priceForDate = Math.round(currentPrice * 1.15);
-                dateLabel = `${t('predicted_next_month')} on ${selected.toLocaleDateString('en-IN')}`;
-            } else if (diffDays > 0) {
-                // Future prediction
-                const monthsAhead = Math.ceil(diffDays / 30);
-                priceForDate = Math.round(currentPrice * (1 + (monthsAhead * 0.02)));
-                dateLabel = `${t('predicted_next_month')} on ${selected.toLocaleDateString('en-IN')}`;
+    // Robust MSP Lookup: try market-specific, then crop-wide, then calculate estimate
+    let msp = priceData.msp;
+    let isEstimatedMSP = false;
+
+    if (msp === null || msp === undefined || msp <= 0) { // Also check if MSP is non-positive
+      // Find typical MSP for this crop from other markets
+      const cropData = PRICE_DATABASE[crop];
+      for (const s in cropData) {
+        for (const d in cropData[s]) {
+          for (const m in cropData[s][d]) {
+            if (cropData[s][d][m].msp > 0) { // Check if MSP is valid
+              msp = cropData[s][d][m].msp;
+              break;
             }
+          }
+          if (msp) break;
         }
+        if (msp) break;
+      }
+    }
 
-        const predictedPrice = Math.round(currentPrice * 1.05);
-        const nextWeekPrice = Math.round(currentPrice * 1.01);
-        const changePercent = ((predictedPrice - currentPrice) / currentPrice * 100).toFixed(1);
+    // Default: Calculate estimated MSP as 75% of current market price if still missing
+    if (!msp || msp <= 0) {
+      msp = Math.round(currentPrice * 0.75);
+      isEstimatedMSP = true;
+    }
 
-        setResult({
-            crop,
-            state,
-            district,
-            market,
-            rateType,
-            currentPrice,
-            priceForDate,
-            dateLabel,
-            predictedPrice,
-            nextWeekPrice,
-            changePercent,
-            trendData,
-            msp: priceData.msp
-        });
-    };
+    // Prediction logic:
+    // 1. Calculate general growth factor based on 6-month trend
+    const isRising = trend.length > 1 && trend[trend.length - 1] > trend[0];
+    const monthlyGrowthRate = isRising ? 0.05 : -0.02; // +5% or -2% per month
+    const dailyGrowthRate = monthlyGrowthRate / 30;
 
-    return (
-        <div className="container">
-            <BackButton />
-            <h2 className="text-center" style={{ margin: '1.5rem 0' }}>{t('price_forecasting_title')}</h2>
+    const predictedPrice = Math.round(currentPrice * (1 + monthlyGrowthRate));
 
-            <div className="card" style={{ maxWidth: '900px', margin: '0 auto 2rem' }}>
-                <form onSubmit={handleSearch} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>{t('crop_name')}</label>
-                            <select value={crop} onChange={(e) => { setCrop(e.target.value); setState(''); setDistrict(''); setMarket(''); }} required style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #d1d5db' }}>
-                                <option value="">-- {t('choose_crop')} --</option>
-                                {crops.map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                        </div>
+    setResult({
+      crop, state, district, market, rateType,
+      currentPrice,
+      predictedPrice,
+      dailyGrowthRate,
+      msp,
+      isEstimatedMSP,
+      changePercent: (((predictedPrice - currentPrice) / currentPrice) * 100).toFixed(1)
+    });
+  };
 
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>{t('state')}</label>
-                            <select value={state} onChange={(e) => { setState(e.target.value); setDistrict(''); setMarket(''); }} required disabled={!crop} style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #d1d5db' }}>
-                                <option value="">-- {t('state')} --</option>
-                                {states.map(s => <option key={s} value={s}>{s}</option>)}
-                            </select>
-                        </div>
+  /**
+   * Reactive Date Calculation: Updates whenever the user selects a new date
+   */
+  const dateForecast = useMemo(() => {
+    if (!result || !selectedDate) return null;
 
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>{t('district')}</label>
-                            <select value={district} onChange={(e) => { setDistrict(e.target.value); setMarket(''); }} required disabled={!state} style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #d1d5db' }}>
-                                <option value="">-- {t('district')} --</option>
-                                {districts.map(d => <option key={d} value={d}>{d}</option>)}
-                            </select>
-                        </div>
+    const today = new Date();
+    const targetDate = new Date(selectedDate);
 
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>{t('market_mandi')}</label>
-                            <select value={market} onChange={(e) => setMarket(e.target.value)} required disabled={!district} style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #d1d5db' }}>
-                                <option value="">-- {t('market_mandi')} --</option>
-                                {markets.map(m => <option key={m} value={m}>{m}</option>)}
-                            </select>
-                        </div>
+    // Normalize dates to remove time impact
+    today.setHours(0, 0, 0, 0);
+    targetDate.setHours(0, 0, 0, 0);
 
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>{t('rate_type')}</label>
-                            <select value={rateType} onChange={(e) => setRateType(e.target.value)} required style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #d1d5db' }}>
-                                <option value="wholesale">{t('wholesale')}</option>
-                                <option value="retail">{t('retail')}</option>
-                                <option value="msp">{t('msp')}</option>
-                            </select>
-                        </div>
+    const diffTime = targetDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>{t('select_date_opt')}</label>
-                            <input
-                                type="date"
-                                value={selectedDate}
-                                onChange={(e) => setSelectedDate(e.target.value)}
-                                style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid #d1d5db' }}
-                            />
-                            <small style={{ fontSize: '0.75rem', color: '#6b7280' }}>{t('date_hint')}</small>
-                        </div>
-                    </div>
+    if (diffDays > 0) {
+      return {
+        price: Math.round(result.currentPrice * (1 + (result.dailyGrowthRate * diffDays))),
+        label: targetDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+      };
+    }
+    return null;
+  }, [result, selectedDate]);
 
-                    <button type="submit" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center' }}>
-                        <Search size={18} /> {t('get_forecast')}
-                    </button>
-                </form>
+  /**
+   * Converts base price (per quintal) to selected unit
+   */
+  const convertPrice = (price) => {
+    if (price === null || price === undefined) return null;
+    const val = typeof price === 'number' ? price : parseFloat(price);
+    if (isNaN(val)) return null;
+    const converted = val * conversionFactors[unit];
+    return unit === 'kg' ? converted.toFixed(2) : Math.round(converted);
+  };
+
+  return (
+    <div className="container" style={{ paddingBottom: '4rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+        <BackButton />
+        <h1 style={{ fontSize: '2rem', margin: 0, color: 'var(--primary-dark)' }}>{t('price_forecasting_title')}</h1>
+      </div>
+
+      {/* Selection Form Section - Aligned with CropRecommendation theme */}
+      <div className="card" style={{ maxWidth: '800px', margin: '0 auto 2.5rem', borderRadius: '16px' }}>
+        <form onSubmit={handleSearch} className={styles.form} style={{ padding: '1.5rem' }}>
+          <div className={styles.inputGrid} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem' }}>
+
+            <div className={styles.inputGroup} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--primary-dark)' }}>{t('crop_name')}</label>
+              <select
+                value={crop}
+                onChange={(e) => { setCrop(e.target.value); setState(''); setDistrict(''); setMarket(''); setResult(null); }}
+                required
+                style={{ padding: '12px', borderRadius: '8px', border: '2px solid var(--primary)', background: '#fff' }}
+              >
+                <option value="">-- {t('choose_crop')} --</option>
+                {crops.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
             </div>
 
-            {result && (
-                <div className={styles.marketCard}>
-                    <div className={styles.header}>
-                        <div>
-                            <h3>{result.crop} ({result.rateType === 'wholesale' ? t('wholesale') : result.rateType === 'retail' ? t('retail') : 'MSP'})</h3>
-                            <span className={styles.location}>{t('market_mandi')}: {result.market}, {result.district}, {result.state}</span>
-                            {result.msp && <span className={styles.location} style={{ display: 'block', marginTop: '0.25rem', fontSize: '0.85rem' }}>{t('msp')}: ₹{result.msp}/quintal</span>}
-                        </div>
-                    </div>
+            <div className={styles.inputGroup} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--primary-dark)' }}>{t('state')}</label>
+              <select
+                value={state}
+                onChange={(e) => { setState(e.target.value); setDistrict(''); setMarket(''); setResult(null); }}
+                disabled={!crop}
+                required
+                style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: crop ? '#fff' : '#f9fafb' }}
+              >
+                <option value="">-- {t('state')} --</option>
+                {states.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
 
-                    <div className={styles.priceGrid}>
-                        <div className={styles.priceItem}>
-                            <span className={styles.label}>{t('current_price')}</span>
-                            <span className={styles.value}>₹{result.currentPrice}</span>
-                        </div>
-                        <div className={styles.priceItem}>
-                            <span className={styles.label}>{t('next_week_price')}</span>
-                            <span className={styles.value}>₹{result.nextWeekPrice}</span>
-                        </div>
-                        {selectedDate && (
-                            <div className={`${styles.priceItem} ${styles.highlight}`}>
-                                <span className={styles.label}>{result.dateLabel}</span>
-                                <span className={styles.value} style={{ fontSize: '2.25rem', color: '#059669' }}>₹{result.priceForDate}</span>
-                                <div style={{ marginTop: '5px', fontSize: '0.75rem', color: '#059669', fontWeight: 'bold' }}>SELECTED DATE PRICE</div>
-                            </div>
-                        )}
-                    </div>
+            <div className={styles.inputGroup} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--primary-dark)' }}>{t('district')}</label>
+              <select
+                value={district}
+                onChange={(e) => { setDistrict(e.target.value); setMarket(''); setResult(null); }}
+                disabled={!state}
+                required
+                style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: state ? '#fff' : '#f9fafb' }}
+              >
+                <option value="">-- {t('district')} --</option>
+                {districts.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
 
-                    <div className={styles.recommendation}>
-                        <div className={styles.recIcon}>
-                            <TrendingUp size={24} />
-                        </div>
-                        <div>
-                            <h4>{result.changePercent > 3 ? t('strong_hold_signal') : result.changePercent > 0 ? t('hold_signal') : t('sell_signal')}</h4>
-                            <p>
-                                {result.changePercent > 3
-                                    ? `Prices are expected to rise by ${result.changePercent}%. Consider holding stock for better returns.`
-                                    : result.changePercent > 0
-                                        ? `Moderate price increase expected. Monitor market conditions.`
-                                        : `Prices may decline. Consider selling current stock.`}
-                            </p>
-                        </div>
-                    </div>
+            <div className={styles.inputGroup} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--primary-dark)' }}>{t('market_mandi')}</label>
+              <select
+                value={market}
+                onChange={(e) => { setMarket(e.target.value); setResult(null); }}
+                disabled={!district}
+                required
+                style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', background: district ? '#fff' : '#f9fafb' }}
+              >
+                <option value="">-- {t('market_mandi')} --</option>
+                {markets.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+
+            <div className={styles.inputGroup} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--primary-dark)' }}>{t('rate_type')}</label>
+              <select value={rateType} onChange={(e) => { setRateType(e.target.value); setResult(null); }} style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                <option value="wholesale">{t('wholesale')}</option>
+                <option value="retail">{t('retail')}</option>
+              </select>
+            </div>
+
+            <div className={styles.inputGroup} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--primary-dark)' }}>{t('select_date_opt')}</label>
+              <div style={{ position: 'relative' }}>
+                <Calendar size={18} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--primary)', pointerEvents: 'none' }} />
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  style={{ padding: '10px 36px 10px 12px', borderRadius: '8px', border: '1px solid var(--border)', width: '100%' }}
+                />
+              </div>
+              <small style={{ fontSize: '0.7rem', color: '#6b7280', marginTop: '2px' }}>{t('date_hint')}</small>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--primary-dark)', display: 'block', marginBottom: '4px' }}>{t('unit')}</label>
+              <select value={unit} onChange={(e) => setUnit(e.target.value)} style={{ padding: '12px', borderRadius: '8px', border: '1px solid var(--border)', width: '100%' }}>
+                <option value="quintal">{unitLabels.quintal}</option>
+                <option value="kg">{unitLabels.kg}</option>
+                <option value="tonne">{unitLabels.tonne}</option>
+              </select>
+            </div>
+            <button type="submit" className="btn btn-primary" style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', marginTop: 'auto', height: '48px' }}>
+              <Search size={20} /> {t('get_forecast')}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Results Section */}
+      {result && (
+        <div className="animate-fade-in" style={{ maxWidth: '900px', margin: '0 auto' }}>
+          <div className={styles.marketCard} style={{ padding: '2rem', borderRadius: '24px', boxShadow: 'var(--shadow-lg)' }}>
+            <div className={styles.header} style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '1.5rem', marginBottom: '1.5rem' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--primary)', fontWeight: '700', fontSize: '0.9rem', marginBottom: '4px' }}>
+                  <MapPin size={16} /> {result.state}
                 </div>
-            )}
+                <h3 style={{ fontSize: '1.75rem', fontWeight: '800', color: '#111827', margin: 0 }}>
+                  {result.market}, {result.district}
+                </h3>
+                <div style={{ color: '#6b7280', fontSize: '1rem', marginTop: '4px' }}>
+                  {result.crop} — {result.rateType === 'wholesale' ? t('wholesale') : t('retail')}
+                </div>
+              </div>
+              <div className={styles.priceTag} style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase' }}>{t('current_price')}</div>
+                <div style={{ fontSize: '2.5rem', fontWeight: '900', color: '#111827' }}>₹{convertPrice(result.currentPrice)}</div>
+                <div style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '8px',
+                  color: result.changePercent >= 0 ? '#059669' : '#DC2626',
+                  background: result.changePercent >= 0 ? '#ecfdf5' : '#fef2f2',
+                  padding: '4px 10px', borderRadius: '99px', fontSize: '0.85rem', fontWeight: '800'
+                }}>
+                  {result.changePercent >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                  {Math.abs(result.changePercent)}% {result.changePercent >= 0 ? 'Increase' : 'Decrease'}
+                </div>
+              </div>
+            </div>
+
+            {/* Metrics Grid */}
+            <div className={styles.priceGrid} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem' }}>
+              <div className={styles.priceItem} style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '16px', border: '1px solid #eef2f7', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px' }}>{result.isEstimatedMSP ? 'Est. Support Price' : t('msp')}</div>
+                <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#15803d' }}>
+                  ₹{convertPrice(result.msp)}
+                </div>
+                <small style={{ color: '#94a3b8', fontSize: '0.7rem' }}>
+                  {result.isEstimatedMSP ? 'Calculated Fair Rate' : 'Government Guaranteed'}
+                </small>
+              </div>
+
+              <div className={`${styles.priceItem} ${styles.highlight}`} style={{ background: '#f0fdf4', padding: '1.5rem', borderRadius: '16px', border: '2px solid var(--primary)', textAlign: 'center' }}>
+                <div style={{ fontSize: '0.75rem', fontWeight: '700', color: 'var(--primary-dark)', textTransform: 'uppercase', marginBottom: '8px' }}>{t('predicted_next_month')}</div>
+                <div style={{ fontSize: '1.75rem', fontWeight: '900', color: 'var(--primary-dark)' }}>₹{convertPrice(result.predictedPrice)}</div>
+                <small style={{ color: 'var(--primary)', fontSize: '0.7rem' }}>Model Expectation</small>
+              </div>
+
+              {dateForecast && (
+                <div className={styles.priceItem} style={{ background: '#eff6ff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #dbeafe', textAlign: 'center' }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: '700', color: '#1e40af', textTransform: 'uppercase', marginBottom: '8px' }}>Rate on {dateForecast.label}</div>
+                  <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#1e40af' }}>₹{convertPrice(dateForecast.price)}</div>
+                  <small style={{ color: '#60a5fa', fontSize: '0.7rem' }}>Forecasted Rate</small>
+                </div>
+              )}
+            </div>
+
+            {/* Recommendation Banner */}
+            <div className={styles.recommendation} style={{
+              marginTop: '2.5rem', background: 'linear-gradient(to right, #f8fafc, #fff)',
+              padding: '1.5rem', borderRadius: '16px', border: '1px solid #eef2f7',
+              display: 'flex', gap: '1.5rem', alignItems: 'center'
+            }}>
+              <div className={styles.recIcon} style={{
+                background: result.changePercent > 3 ? '#10b981' : result.changePercent > 0 ? '#f59e0b' : '#ef4444',
+                color: 'white', padding: '12px', borderRadius: '12px'
+              }}>
+                {result.changePercent > 0 ? <TrendingUp size={24} /> : <TrendingDown size={24} />}
+              </div>
+              <div>
+                <h4 style={{ margin: 0, color: '#111827', fontSize: '1.1rem' }}>
+                  {result.changePercent > 3
+                    ? t('strong_hold_signal')
+                    : result.changePercent > 0
+                      ? t('hold_signal')
+                      : t('sell_signal')}
+                </h4>
+                <p style={{ margin: '4px 0 0', fontSize: '0.9rem', color: '#4b5563', lineHeight: 1.5 }}>
+                  {result.changePercent > 3
+                    ? "Strong upward trend. Holding stock is highly recommended for maximum profit."
+                    : result.changePercent > 0
+                      ? "Market is rising steadily. Consider holding or selling in small batches."
+                      : "Downward trend detected. Consider selling to avoid price drops."}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
-    );
+      )}
+    </div>
+  );
 };
 
 export default PriceForecasting;

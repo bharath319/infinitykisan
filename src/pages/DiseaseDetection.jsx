@@ -1,5 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useTranslation } from '../services/i18n';
+import { analyzeDiseaseImages } from '../services/gemini';
+import { jsPDF } from 'jspdf';
 import { CROPS } from '../constants';
 
 const DiseaseDetectionPage = ({ isOnline = true }) => {
@@ -54,7 +56,7 @@ const DiseaseDetectionPage = ({ isOnline = true }) => {
         setAnalysisResult(null);
 
         try {
-            const { analyzeDiseaseImages } = await import('../services/gemini');
+            // Use static import to avoid creating a separate chunk that may fail to load
             const result = await analyzeDiseaseImages(images, crop, symptoms, language);
             setAnalysisResult(result);
         } catch (error) {
@@ -76,6 +78,165 @@ const DiseaseDetectionPage = ({ isOnline = true }) => {
         setCrop('');
         setSymptoms('');
         setAnalysisResult(null);
+    };
+
+    const handleDownloadReport = async () => {
+        if (!analysisResult) return;
+
+        const now = new Date();
+        const timestamp = now.toISOString().replace(/[:.]/g, '-');
+        const filename = `disease-report-${crop || 'unknown'}-${timestamp}.pdf`;
+
+        // Create a landscape PDF so images have more horizontal room
+        const doc = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'landscape' });
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 40;
+        const lineHeight = 16;
+        let y = margin;
+
+        const pushLine = (text, opts = {}) => {
+            const fontSize = opts.fontSize || 12;
+            doc.setFontSize(fontSize);
+            const lines = String(text).split('\n');
+            lines.forEach((ln) => {
+                doc.text(ln, margin, y);
+                y += lineHeight + (fontSize - 12) * 0.6;
+                if (y > pageHeight - margin) {
+                    doc.addPage();
+                    y = margin;
+                }
+            });
+        };
+
+        const getImageFormat = (dataUrl) => {
+            const match = dataUrl.match(/^data:image\/(\w+);base64,/);
+            if (!match) return 'JPEG';
+            const fmt = match[1].toUpperCase();
+            if (fmt === 'JPG') return 'JPEG';
+            if (fmt === 'JPEG' || fmt === 'PNG') return fmt;
+            return fmt === 'PNG' ? 'PNG' : 'JPEG';
+        };
+
+        const loadImage = (dataUrl) => new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = (e) => reject(e);
+            img.src = dataUrl;
+        });
+
+        // Header and analysis text
+        pushLine('Infinity Kisan - Disease Analysis Report', { fontSize: 16 });
+        pushLine(`Date: ${now.toLocaleString()}`);
+        pushLine(`Crop: ${crop}`);
+        pushLine(`Disease: ${analysisResult.disease}`);
+        pushLine(`Confidence: ${analysisResult.confidence}`);
+        pushLine('');
+        pushLine('Symptoms Detected:', { fontSize: 14 });
+        if (analysisResult.symptoms && analysisResult.symptoms.length > 0) {
+            analysisResult.symptoms.forEach((s, i) => pushLine(`${i + 1}. ${s}`));
+        } else {
+            pushLine('- None');
+        }
+
+        pushLine('');
+        pushLine('Treatment Recommendations:', { fontSize: 14 });
+        if (analysisResult.treatments && analysisResult.treatments.length > 0) {
+            analysisResult.treatments.forEach((t, i) => pushLine(`${i + 1}. ${t}`));
+        } else {
+            pushLine('- None');
+        }
+
+        pushLine('');
+        pushLine('Preventive Measures:', { fontSize: 14 });
+        if (analysisResult.preventiveMeasures && analysisResult.preventiveMeasures.length > 0) {
+            analysisResult.preventiveMeasures.forEach((p, i) => pushLine(`${i + 1}. ${p}`));
+        } else {
+            pushLine('- None');
+        }
+
+        pushLine('');
+        pushLine(`Images included: ${images.length}`);
+
+        // Thumbnails layout: 3 columns
+        if (images && images.length > 0) {
+            const gap = 12;
+            const cols = 3;
+            const thumbW = Math.min(180, (pageWidth - margin * 2 - gap * (cols - 1)) / cols);
+            const thumbH = 110;
+
+            // move down before images
+            y += 10;
+            pushLine('');
+            pushLine('Uploaded Images (thumbnails):', { fontSize: 14 });
+
+            let xStart = margin;
+            let x = xStart;
+            let col = 0;
+
+            for (let i = 0; i < images.length; i++) {
+                const imgData = images[i];
+                const fmt = getImageFormat(imgData);
+
+                // If not enough vertical space, add new page
+                if (y + thumbH + 40 > pageHeight - margin) {
+                    doc.addPage();
+                    y = margin;
+                }
+
+                x = xStart + col * (thumbW + gap);
+                try {
+                    doc.addImage(imgData, fmt, x, y, thumbW, thumbH);
+                } catch (err) {
+                    console.warn('Failed to add image to PDF:', err);
+                }
+
+                // caption
+                const captionY = y + thumbH + 12;
+                doc.setFontSize(10);
+                doc.text(`Image ${i + 1}`, x, captionY);
+
+                col++;
+                if (col >= cols) {
+                    col = 0;
+                    y = captionY + 20; // move y to next row
+                }
+            }
+        }
+
+        // Add full-size images on their own pages
+        if (images && images.length > 0) {
+            for (let i = 0; i < images.length; i++) {
+                try {
+                    const img = await loadImage(images[i]);
+                    // add new page for each image (except if first page has enough space? keep separate pages)
+                    doc.addPage();
+                    const maxW = pageWidth - margin * 2;
+                    const maxH = pageHeight - margin * 2;
+                    let iw = img.naturalWidth || img.width;
+                    let ih = img.naturalHeight || img.height;
+                    const ratio = Math.min(maxW / iw, maxH / ih, 1);
+                    const drawW = iw * ratio;
+                    const drawH = ih * ratio;
+                    const x = (pageWidth - drawW) / 2;
+                    const yImg = (pageHeight - drawH) / 2;
+                    const fmt = getImageFormat(images[i]);
+                    try {
+                        doc.addImage(images[i], fmt, x, yImg, drawW, drawH);
+                    } catch (err) {
+                        console.warn('Failed to add full-size image to PDF:', err);
+                    }
+                    // caption at bottom
+                    doc.setFontSize(10);
+                    doc.text(`Image ${i + 1}`, margin, pageHeight - margin / 2);
+                } catch (err) {
+                    console.warn('Failed to load image for PDF:', err);
+                }
+            }
+        }
+
+        // Save the PDF
+        doc.save(filename);
     };
 
     return (
@@ -283,7 +444,7 @@ const DiseaseDetectionPage = ({ isOnline = true }) => {
                             <i className="fas fa-rotate"></i>
                             New Analysis
                         </button>
-                        <button className="bg-emerald-700 text-white font-black py-5 rounded-2xl flex items-center justify-center gap-3 shadow-xl hover:bg-emerald-800 transition-all">
+                        <button onClick={handleDownloadReport} className="bg-emerald-700 text-white font-black py-5 rounded-2xl flex items-center justify-center gap-3 shadow-xl hover:bg-emerald-800 transition-all">
                             <i className="fas fa-file-pdf"></i>
                             Download Report
                         </button>

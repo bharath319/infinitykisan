@@ -5,7 +5,7 @@ async function listModels() {
         const envContent = fs.readFileSync('.env', 'utf8');
         const apiKey = envContent.match(/REACT_APP_GEMINI_API_KEY=(.*)/)[1].trim();
 
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1/models?key=${apiKey}`);
         const data = await response.json();
 
         if (data.error) {

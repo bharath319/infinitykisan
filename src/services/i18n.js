@@ -113,6 +113,8 @@ const translations = {
         hold_signal: "Hold Signal",
         sell_signal: "Sell Signal",
         strong_hold_signal: "Strong Hold Signal",
+        price: "Price",
+        not_available: "N/A",
 
         // Crop Planner
         crop_planner_title: "Comprehensive Crop Planner",
@@ -241,6 +243,8 @@ const translations = {
         hold_signal: "होल्ड सिग्नल",
         sell_signal: "सेल सिग्नल",
         strong_hold_signal: "स्ट्रॉन्ग होल्ड सिग्नल",
+        price: "कीमत",
+        not_available: "उपलब्ध नहीं",
 
         // Crop Planner
         crop_planner_title: "व्यापक फसल योजनाकार",

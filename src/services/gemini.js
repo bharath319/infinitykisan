@@ -39,8 +39,8 @@ export const analyzeDiseaseImages = async (images, crop, symptoms, language = 'e
             };
         });
 
-        // Use the stable 1.5 model for better free tier support
-        let response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+    // Use a current available Gemini flash model
+    let response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -53,10 +53,10 @@ export const analyzeDiseaseImages = async (images, crop, symptoms, language = 'e
             })
         });
 
-        // Fallback to gemini-pro if flash is hitting a rate limit
+        // Fallback to a pro model if flash is hitting a rate limit
         if (!response.ok) {
             console.warn('Primary model failed, trying fallback...');
-            response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
+            response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-pro:generateContent?key=${apiKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

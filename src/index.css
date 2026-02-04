@@ -62,6 +62,47 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
+/* Make images responsive across the app */
+img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}
+
+/* Responsive root font-size so rem-based spacing scales naturally */
+:root {
+    --base-font-size: clamp(14px, 1.6vw, 18px);
+}
+
+html {
+    font-size: var(--base-font-size);
+}
+
+/* Responsive container width using clamp so layout breathes on all devices */
+.container {
+    max-width: clamp(640px, 90vw, 1200px);
+}
+
+/* Improve touch targets on touch devices */
+@media (hover: none) and (pointer: coarse) {
+    .btn {
+        padding: 0.65rem 1rem;
+        min-height: 44px;
+    }
+    .card { padding: 1rem; }
+}
+
+/* Small tweaks for very small screens */
+@media (max-width: 420px) {
+    html { font-size: calc(var(--base-font-size) * 0.95); }
+    .container { padding-left: 0.5rem; padding-right: 0.5rem; }
+}
+
+/* Slightly larger defaults for wide screens */
+@media (min-width: 1400px) {
+    html { font-size: calc(var(--base-font-size) * 1.05); }
+}
+
 /* Typography Utilities */
 h1,
 h2,
