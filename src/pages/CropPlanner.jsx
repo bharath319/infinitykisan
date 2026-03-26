@@ -110,9 +110,14 @@ const CropPlanner = () => {
     };
 
     return (
-        <div className="container">
-            <BackButton />
-            <h2 className="text-center" style={{ margin: '1.5rem 0' }}>{t('crop_planner_title')}</h2>
+        <div className="w-full min-h-screen" style={{ backgroundImage: "url('/cropplannerbackground.png')", backgroundSize: 'cover', backgroundAttachment: 'fixed', backgroundPosition: 'center', backgroundRepeat: 'no-repeat', paddingTop: '1rem', paddingBottom: '2rem' }}>
+            <div className="container">
+                <BackButton />
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.5rem', marginBottom: '2rem' }}>
+                    <div style={{ background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(10px)', padding: '1rem 2.5rem', borderRadius: '1.5rem', border: '1px solid rgba(255, 255, 255, 0.6)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)' }}>
+                        <h2 className="text-center" style={{ margin: 0, fontSize: '2.5rem', fontWeight: '900', color: '#111827', textShadow: '0 1px 2px rgba(255,255,255,1)' }}>{t('crop_planner_title')}</h2>
+                    </div>
+                </div>
 
             <div className="card" style={{ maxWidth: '800px', margin: '0 auto' }}>
                 <form onSubmit={generatePlan} className={styles.form}>
@@ -175,6 +180,7 @@ const CropPlanner = () => {
                     </div>
                 )}
             </div>
+        </div>
         </div>
     );
 };

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { ChevronDown, Calculator, DollarSign, Sprout } from 'lucide-react';
+import { ChevronDown, Calculator, Sprout } from 'lucide-react';
 import BackButton from '../components/BackButton';
 import styles from '../styles/YieldPrediction.module.css';
 import { useTranslation } from '../services/i18n';
@@ -68,9 +68,14 @@ const YieldPrediction = () => {
     };
 
     return (
-        <div className="container">
-            <BackButton />
-            <h2 className="text-center" style={{ margin: '1.5rem 0' }}>{t('yield_calculator')}</h2>
+        <div className="w-full min-h-screen" style={{ backgroundImage: "url('/yieldbackground.png')", backgroundSize: 'cover', backgroundAttachment: 'fixed', backgroundPosition: 'center', backgroundRepeat: 'no-repeat', paddingTop: '1rem', paddingBottom: '2rem' }}>
+            <div className="container">
+                <BackButton />
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.5rem', marginBottom: '2rem' }}>
+                    <div style={{ background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(10px)', padding: '1rem 2.5rem', borderRadius: '1.5rem', border: '1px solid rgba(255, 255, 255, 0.6)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)' }}>
+                        <h2 className="text-center" style={{ margin: 0, fontSize: '2.5rem', fontWeight: '900', color: '#111827', textShadow: '0 1px 2px rgba(255,255,255,1)' }}>{t('yield_calculator')}</h2>
+                    </div>
+                </div>
 
             <div className={styles.predictionContainer}>
                 <div className="card">
@@ -195,6 +200,7 @@ const YieldPrediction = () => {
                     </div>
                 )}
             </div>
+        </div>
         </div>
     );
 };

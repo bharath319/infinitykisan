@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Mic, User, Bot, Volume2, X, Save } from 'lucide-react';
+import { Send, Mic, User, Bot, Volume2 } from 'lucide-react';
 import BackButton from '../components/BackButton';
 import styles from '../styles/Chatbot.module.css';
 import { useTranslation } from '../services/i18n';
@@ -122,6 +122,7 @@ const Chatbot = () => {
         { keywords: ['anthracnose', 'fungus', 'fungicide', 'blight', 'rust', 'disease'], response: "For fungal diseases like Anthracnose or Blight, you can use fungicides like Mancozeb (2.5g/L) or Carbendazim (1g/L). Ensure good drainage." },
         { keywords: ['weather', 'rain'], response: "I can't check live weather yet, but usually, monsoon starts in June. Ensure drainage if heavy rain is expected." },
         { keywords: ['price', 'rate', 'mandi'], response: "For exact prices, please visit the 'Price Forecasting' section in the app. Prices change daily based on demand." },
+        { keywords: ['scheme', 'yojana', 'pension', 'subsidy', 'help', 'government'], response: "Key Farmer Schemes: 1. PM-KISAN (₹6000/year support), 2. PM Fasal Bima Yojana (Crop Insurance), 3. Soil Health Card Scheme, 4. PM Krishi Sinchai Yojana (Irrigation support). Visit your local Jan Seva Kendra for registration." },
     ];
 
     const generateLocalResponse = (text) => {
@@ -131,7 +132,7 @@ const Chatbot = () => {
                 return entry.response;
             }
         }
-        return "I'm using local knowledge. For better answers, please add a Google Gemini API Key in settings.";
+        return "I'm using local knowledge. To enable full AI, please add your API key to the .env file.";
     };
 
     const fetchGeminiResponse = async (userText) => {
@@ -199,10 +200,11 @@ const Chatbot = () => {
     };
 
     return (
-        <div className="container" style={{ height: 'calc(100vh - 140px)', display: 'flex', flexDirection: 'column', position: 'relative', maxWidth: '800px', margin: '0 auto' }}>
-            <div style={{ display: 'flex', justifyContent: 'flex-start', padding: '10px 0' }}>
-                <BackButton />
-            </div>
+        <div className="w-full min-h-screen" style={{ backgroundImage: "url('/ourservice%20background.png')", backgroundSize: 'cover', backgroundAttachment: 'fixed', backgroundPosition: 'center', display: 'flex', flexDirection: 'column' }}>
+            <div className="container" style={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative', maxWidth: '800px', margin: '0 auto', paddingTop: '1rem', paddingBottom: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-start', padding: '10px 0' }}>
+                    <BackButton />
+                </div>
 
 
             <div className={styles.chatHeader} style={{ marginTop: '0', borderRadius: '12px 12px 0 0' }}>
@@ -269,6 +271,7 @@ const Chatbot = () => {
                     <Send size={20} />
                 </button>
             </form>
+        </div>
         </div>
     );
 };

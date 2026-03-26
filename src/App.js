@@ -8,6 +8,7 @@ import YieldPrediction from './pages/YieldPrediction';
 import PriceForecasting from './pages/PriceForecasting';
 import CropPlanner from './pages/CropPlanner';
 import Chatbot from './pages/Chatbot';
+import AgriStore from './pages/AgriStore';
 
 function App() {
     return (
@@ -21,6 +22,7 @@ function App() {
                     <Route path="/forecast" element={<PriceForecasting />} />
                     <Route path="/planner" element={<CropPlanner />} />
                     <Route path="/chat" element={<Chatbot />} />
+                    <Route path="/store" element={<AgriStore />} />
                 </Routes>
             </Layout>
         </Router>

@@ -3,6 +3,7 @@ import { useTranslation } from '../services/i18n';
 import { analyzeDiseaseImages } from '../services/gemini';
 import { jsPDF } from 'jspdf';
 import { CROPS } from '../constants';
+import BackButton from '../components/BackButton';
 
 const DiseaseDetectionPage = ({ isOnline = true }) => {
     const [images, setImages] = useState([]);
@@ -240,8 +241,10 @@ const DiseaseDetectionPage = ({ isOnline = true }) => {
     };
 
     return (
-        <div className="max-w-4xl mx-auto space-y-6 pb-12">
-            {/* Header */}
+        <div className="w-full min-h-screen" style={{ backgroundImage: "url('/disesebackground.png')", backgroundSize: 'cover', backgroundAttachment: 'fixed', backgroundPosition: 'center', backgroundRepeat: 'no-repeat', paddingTop: '2rem', paddingBottom: '2rem' }}>
+            <div className="max-w-4xl mx-auto space-y-6 pb-12 px-4">
+                <BackButton />
+                {/* Header */}
             <div className="bg-[#10B981] rounded-3xl p-10 text-white shadow-md">
                 <h2 className="text-4xl font-black tracking-tight mb-2">{t('disease_detection_nav')}</h2>
                 <p className="text-white/90 text-base font-medium">
@@ -451,6 +454,7 @@ const DiseaseDetectionPage = ({ isOnline = true }) => {
                     </div>
                 </div>
             )}
+        </div>
         </div>
     );
 };

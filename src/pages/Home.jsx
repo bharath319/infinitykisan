@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Sprout, Activity, TrendingUp, DollarSign, Calendar, MessageSquare, MapPin, CloudSun, ChevronRight } from 'lucide-react';
+import { Sprout, Activity, TrendingUp, DollarSign, Calendar, MessageSquare, MapPin, CloudSun, ChevronRight, Store } from 'lucide-react';
 import styles from '../styles/Home.module.css';
 import { useLocation } from '../context/LocationContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -9,7 +9,7 @@ import MapPicker from '../components/MapPicker';
 
 const Home = () => {
     const { location, updateLocation } = useLocation();
-    const { language, changeLanguage } = useLanguage();
+    const { language } = useLanguage();
     const { t } = useTranslation();
     const [isMapOpen, setIsMapOpen] = useState(false);
 
@@ -55,6 +55,13 @@ const Home = () => {
             icon: <MessageSquare size={32} />,
             color: "teal",
             link: "/chat"
+        },
+        {
+            title: t('agri_store') || 'Agri Store',
+            desc: t('agri_store_desc') || 'Find fertilizers & shops.',
+            icon: <Store size={32} />,
+            color: "orange",
+            link: "/store"
         }
     ];
 
@@ -71,7 +78,7 @@ const Home = () => {
                     onClose={() => setIsMapOpen(false)}
                 />
             )}
-            <header className={styles.hero}>
+            <header className={styles.hero} style={{ backgroundImage: `linear-gradient(135deg, rgba(34, 197, 94, 0.8) 0%, rgba(22, 163, 74, 0.8) 100%), url('/551ad913-9d75-4581-aa14-22997988d7c7.png')`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
                 <div className="container">
                     <div className="flex justify-between items-start mb-8">
                         <div>
@@ -97,23 +104,25 @@ const Home = () => {
                 </div>
             </header>
 
-            <section className="container pb-20">
-                <h2 className={styles.sectionTitle}>{t('our_services')}</h2>
-                <div className={styles.grid}>
-                    {features.map((feature, index) => (
-                        <Link to={feature.link} key={index} className={styles.featureCard}>
-                            <div className={`${styles.iconWrapper} ${styles[feature.color]}`}>
-                                {feature.icon}
-                            </div>
-                            <div className="flex flex-col flex-1">
-                                <h3 className={styles.cardTitle}>{feature.title}</h3>
-                                <p className={styles.cardDesc}>{feature.desc}</p>
-                            </div>
-                            <ChevronRight size={20} className="text-stone-300 group-hover:text-stone-500 transition-all ml-auto" />
-                        </Link>
-                    ))}
-                </div>
-            </section>
+            <div className="w-full min-h-screen" style={{ backgroundImage: "url('/ourservice_background.png')", backgroundSize: 'cover', backgroundPosition: 'center' }}>
+                <section className="container px-4" style={{ paddingTop: '5.5rem', paddingBottom: '5rem' }}>
+                    <h1 className={styles.sectionTitle} style={{ fontSize: '3rem', fontWeight: '900', textAlign: 'center', marginTop: 0, marginBottom: '3.5rem', color: '#111827', letterSpacing: '-0.025em' }}>{t('our_services')}</h1>
+                    <div className={styles.grid}>
+                        {features.map((feature, index) => (
+                            <Link to={feature.link} key={index} className={styles.featureCard}>
+                                <div className={`${styles.iconWrapper} ${styles[feature.color]}`}>
+                                    {feature.icon}
+                                </div>
+                                <div className="flex flex-col flex-1">
+                                    <h3 className={styles.cardTitle}>{feature.title}</h3>
+                                    <p className={styles.cardDesc}>{feature.desc}</p>
+                                </div>
+                                <ChevronRight size={20} className="text-stone-300 group-hover:text-stone-500 transition-all ml-auto" />
+                            </Link>
+                        ))}
+                    </div>
+                </section>
+            </div>
         </div>
     );
 };

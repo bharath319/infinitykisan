@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sprout, Droplets, Clock, MapPin, Search, Map } from 'lucide-react';
+import { Droplets, Clock, MapPin, Search, Map, Sprout } from 'lucide-react';
 import MapPicker from '../components/MapPicker';
 import BackButton from '../components/BackButton';
 import styles from '../styles/CropRecommendation.module.css';
@@ -8,39 +8,39 @@ import { useTranslation } from '../services/i18n';
 // Mock Database for Indian States
 const SOIL_DATA = {
     Punjab: {
-        N: 140, P: 50, K: 50, ph: 7.5, crops:
+        N: 140, P: 50, K: 50, ph: 7.5, soilType: "Alluvial", crops:
             [{ name: "Wheat", score: 98, duration: "125 days", water: "Medium" }, { name: "Rice", score: 90, duration: "110 days", water: "High" }, { name: "Maize", score: 85, duration: "100 days", water: "Medium" }, { name: "Sugarcane", score: 80, duration: "300+ days", water: "High" }]
     },
     Maharashtra: {
-        N: 80, P: 40, K: 60, ph: 6.8, crops:
+        N: 80, P: 40, K: 60, ph: 6.8, soilType: "Black Cotton", crops:
             [{ name: "Cotton", score: 95, duration: "160 days", water: "Medium" }, { name: "Sugarcane", score: 92, duration: "365 days", water: "High" }, { name: "Soybean", score: 88, duration: "95 days", water: "Low" }, { name: "Jowar", score: 82, duration: "110 days", water: "Low" }]
     },
     TamilNadu: {
-        N: 100, P: 45, K: 55, ph: 6.5, crops:
+        N: 100, P: 45, K: 55, ph: 6.5, soilType: "Red Laterite", crops:
             [{ name: "Rice", score: 94, duration: "120 days", water: "High" }, { name: "Banana", score: 89, duration: "300 days", water: "High" }, { name: "Coconut", score: 96, duration: "Running", water: "Medium" }, { name: "Groundnut", score: 85, duration: "105 days", water: "Low" }]
     },
     Rajasthan: {
-        N: 60, P: 30, K: 40, ph: 8.0, crops:
+        N: 60, P: 30, K: 40, ph: 8.0, soilType: "Sandy", crops:
             [{ name: "Bajra", score: 98, duration: "85 days", water: "Very Low" }, { name: "Mustard", score: 92, duration: "110 days", water: "Low" }, { name: "Guar", score: 88, duration: "90 days", water: "Low" }, { name: "Wheat", score: 70, duration: "120 days", water: "Medium" }]
     },
     WestBengal: {
-        N: 120, P: 60, K: 55, ph: 6.0, crops:
+        N: 120, P: 60, K: 55, ph: 6.0, soilType: "Alluvial", crops:
             [{ name: "Rice", score: 98, duration: "115 days", water: "High" }, { name: "Jute", score: 95, duration: "120 days", water: "High" }, { name: "Potato", score: 90, duration: "90 days", water: "Medium" }, { name: "Mustard", score: 80, duration: "100 days", water: "Low" }]
     },
     UttarPradesh: {
-        N: 125, P: 55, K: 45, ph: 7.2, crops:
+        N: 125, P: 55, K: 45, ph: 7.2, soilType: "Alluvial", crops:
             [{ name: "Sugarcane", score: 96, duration: "360 days", water: "High" }, { name: "Wheat", score: 95, duration: "130 days", water: "Medium" }, { name: "Potato", score: 88, duration: "90 days", water: "Medium" }, { name: "Rice", score: 85, duration: "115 days", water: "High" }]
     },
     Gujarat: {
-        N: 90, P: 40, K: 50, ph: 7.6, crops:
+        N: 90, P: 40, K: 50, ph: 7.6, soilType: "Alluvial", crops:
             [{ name: "Groundnut", score: 96, duration: "110 days", water: "Low" }, { name: "Cotton", score: 94, duration: "160 days", water: "Medium" }, { name: "Castor", score: 90, duration: "150 days", water: "Low" }, { name: "Bajra", score: 80, duration: "90 days", water: "Low" }]
     },
     Karnataka: {
-        N: 95, P: 50, K: 55, ph: 6.8, crops:
+        N: 95, P: 50, K: 55, ph: 6.8, soilType: "Red Laterite", crops:
             [{ name: "Ragi", score: 96, duration: "110 days", water: "Low" }, { name: "Coffee", score: 90, duration: "Running", water: "Medium" }, { name: "Maize", score: 85, duration: "100 days", water: "Medium" }, { name: "Sunflower", score: 80, duration: "90 days", water: "Low" }]
     },
     Kerala: {
-        N: 110, P: 45, K: 60, ph: 5.5, crops:
+        N: 110, P: 45, K: 60, ph: 5.5, soilType: "Laterite", crops:
             [{ name: "Rubber", score: 98, duration: "Running", water: "High" }, { name: "Coconut", score: 95, duration: "Running", water: "Medium" }, { name: "Pepper", score: 90, duration: "Running", water: "High" }, { name: "Banana", score: 88, duration: "300 days", water: "High" }]
     },
 };
@@ -51,7 +51,7 @@ const CropRecommendation = () => {
     const [searchLoading, setSearchLoading] = useState(false);
     const [searchText, setSearchText] = useState('');
     const [detectedLocation, setDetectedLocation] = useState('');
-    const [inputs, setInputs] = useState({ N: '', P: '', K: '', ph: '' });
+    const [inputs, setInputs] = useState({ N: '', P: '', K: '', ph: '', soilType: '' });
     const [result, setResult] = useState(null);
     const [showMap, setShowMap] = useState(false);
 
@@ -95,12 +95,12 @@ const CropRecommendation = () => {
 
                 if (dbKey && SOIL_DATA[dbKey]) {
                     const soil = SOIL_DATA[dbKey];
-                    setInputs({ N: soil.N, P: soil.P, K: soil.K, ph: soil.ph });
+                    setInputs({ N: soil.N, P: soil.P, K: soil.K, ph: soil.ph, soilType: soil.soilType });
                     setDetectedLocation(`${city}, ${state}`);
                 } else {
                     // Absolute fallback
                     setDetectedLocation(`${city} (Generic Data)`);
-                    setInputs({ N: 90, P: 40, K: 40, ph: 6.5 });
+                    setInputs({ N: 90, P: 40, K: 40, ph: 6.5, soilType: 'Loamy' });
                 }
             } else {
                 alert("Location not found. Please try a major city name.");
@@ -135,17 +135,17 @@ const CropRecommendation = () => {
 
             if (dbKey && SOIL_DATA[dbKey]) {
                 const soil = SOIL_DATA[dbKey];
-                setInputs({ N: soil.N, P: soil.P, K: soil.K, ph: soil.ph });
+                setInputs({ N: soil.N, P: soil.P, K: soil.K, ph: soil.ph, soilType: soil.soilType });
                 setDetectedLocation(`${city}, ${state}`);
             } else {
                 setDetectedLocation(`${city} (Generic)`);
-                setInputs({ N: 100, P: 50, K: 50, ph: 7.0 });
+                setInputs({ N: 100, P: 50, K: 50, ph: 7.0, soilType: 'Loamy' });
             }
 
         } catch (e) {
             console.error(e);
             // Silent fallback if API fails
-            setInputs({ N: 100, P: 50, K: 50, ph: 7.0 });
+            setInputs({ N: 100, P: 50, K: 50, ph: 7.0, soilType: 'Loamy' });
             setDetectedLocation(`${latlng.lat.toFixed(2)}, ${latlng.lng.toFixed(2)}`);
         }
         setSearchLoading(false);
@@ -187,12 +187,17 @@ const CropRecommendation = () => {
     };
 
     return (
-        <div className="container">
-            <BackButton />
-            <h2 className="text-center" style={{ margin: '1.5rem 0' }}>{t('crop_recommendation')}</h2>
+        <div className="w-full min-h-screen" style={{ backgroundImage: "url('/crop_recommandation.png')", backgroundSize: 'cover', backgroundAttachment: 'fixed', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}>
+            <div className="container" style={{ paddingBottom: '2rem', paddingTop: '1rem' }}>
+                <BackButton />
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.5rem', marginBottom: '2rem' }}>
+                    <div style={{ background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(10px)', padding: '1rem 2.5rem', borderRadius: '1.5rem', border: '1px solid rgba(255, 255, 255, 0.6)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)' }}>
+                        <h2 className="text-center" style={{ margin: 0, fontSize: '2.75rem', fontWeight: '900', color: '#111827', textShadow: '0 1px 2px rgba(255,255,255,1)' }}>{t('crop_recommendation')}</h2>
+                    </div>
+                </div>
 
-            {!result ? (
-                <div className="card" style={{ maxWidth: '600px', margin: '0 auto' }}>
+                {!result ? (
+                    <div className="card" style={{ maxWidth: '600px', margin: '0 auto' }}>
                     <form onSubmit={handleSubmit} className={styles.form}>
 
                         <div className={styles.stateSelect}>
@@ -221,6 +226,7 @@ const CropRecommendation = () => {
                             {detectedLocation && (
                                 <div className={styles.autoHint}>
                                     <MapPin size={12} /> {t('detected_location')}: <b>{detectedLocation}</b> ({t('soil_autofill_hint')})
+                                    {inputs.soilType && <span> | <b>Soil: {inputs.soilType}</b></span>}
                                 </div>
                             )}
                         </div>
@@ -244,6 +250,20 @@ const CropRecommendation = () => {
                                 <label>{t('ph_level')}</label>
                                 <input type="number" name="ph" value={inputs.ph} onChange={handleInputChange} step="0.1" placeholder="0-14" required />
                             </div>
+                            <div className={styles.inputGroup} style={{ gridColumn: 'span 2' }}>
+                                <label>Soil Type</label>
+                                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                    <Sprout size={18} style={{ position: 'absolute', left: '10px', color: '#16a34a' }} />
+                                    <input 
+                                        type="text" 
+                                        name="soilType" 
+                                        value={inputs.soilType} 
+                                        onChange={handleInputChange} 
+                                        placeholder="Enter soil type (e.g. Alluvial)" 
+                                        style={{ paddingLeft: '36px' }} 
+                                    />
+                                </div>
+                            </div>
                         </div>
 
                         <button disabled={loading} className={`btn btn-primary ${styles.submitBtn}`}>
@@ -264,10 +284,15 @@ const CropRecommendation = () => {
                             <span><Clock size={16} /> {result[0].duration}</span>
                             <span><Droplets size={16} /> {result[0].water}</span>
                         </div>
+                        {inputs.soilType && <div style={{ marginBottom: '1rem', color: '#16a34a', fontWeight: 'bold' }}>Optimal for {inputs.soilType} soil</div>}
                         <button className="btn btn-outline w-full" onClick={() => setResult(null)}>{t('check_another')}</button>
                     </div>
 
-                    <h4 style={{ marginTop: '1.5rem', textAlign: 'center' }}>{t('alternative_crops')}</h4>
+                    <div style={{ display: 'flex', justifyContent: 'center', marginTop: '2.5rem', marginBottom: '1.5rem' }}>
+                        <div style={{ background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(10px)', padding: '0.75rem 2rem', borderRadius: '1.25rem', border: '1px solid rgba(255, 255, 255, 0.6)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)' }}>
+                            <h3 style={{ margin: 0, textAlign: 'center', fontSize: '2rem', fontWeight: '800', color: '#111827', textShadow: '0 1px 2px rgba(255,255,255,1)' }}>{t('alternative_crops')}</h3>
+                        </div>
+                    </div>
                     <div className={styles.otherList}>
                         {result.slice(1).map((crop, i) => (
                             <div key={i} className={styles.otherCard}>
@@ -285,6 +310,7 @@ const CropRecommendation = () => {
             )}
 
             {showMap && <MapPicker onLocationSelect={handleMapSelection} onClose={() => setShowMap(false)} />}
+        </div>
         </div>
     );
 };

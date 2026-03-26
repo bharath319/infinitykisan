@@ -14,17 +14,19 @@ const BackButton = () => {
             style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '8px',
-                marginBottom: '1rem',
-                padding: '8px 16px',
-                fontSize: '0.9rem',
+                gap: '10px',
+                marginBottom: '1.5rem',
+                padding: '10px 20px',
+                fontSize: '1.1rem',
+                fontWeight: 'bold',
                 border: 'none',
                 background: 'transparent',
-                color: 'var(--text-secondary)',
+                color: '#ffffff',
+                textShadow: '0 2px 4px rgba(0,0,0,0.6)',
                 cursor: 'pointer'
             }}
         >
-            <ArrowLeft size={20} /> {t('back_to_dashboard')}
+            <ArrowLeft size={24} /> {t('back_to_dashboard')}
         </button>
     );
 };

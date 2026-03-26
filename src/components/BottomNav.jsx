@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Sprout, Activity, TrendingUp, Calendar, MessageSquare, DollarSign } from 'lucide-react';
+import { Home, Sprout, Activity, Calendar, DollarSign } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import styles from '../styles/BottomNav.module.css';
 import { useTranslation } from '../services/i18n';

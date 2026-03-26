@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, TrendingUp, TrendingDown, MapPin, Calendar, Info, ShieldCheck } from 'lucide-react';
+import { Search, TrendingUp, TrendingDown, MapPin, Calendar } from 'lucide-react';
 import BackButton from '../components/BackButton';
 import styles from '../styles/PriceForecasting.module.css';
 import { useTranslation } from '../services/i18n';
@@ -136,11 +136,14 @@ const PriceForecasting = () => {
   };
 
   return (
-    <div className="container" style={{ paddingBottom: '4rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+    <div className="w-full min-h-screen" style={{ backgroundImage: "url('/priceforcasting.png')", backgroundSize: 'cover', backgroundAttachment: 'fixed', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}>
+      <div className="container" style={{ paddingBottom: '4rem', paddingTop: '1.5rem' }}>
         <BackButton />
-        <h1 style={{ fontSize: '2rem', margin: 0, color: 'var(--primary-dark)' }}>{t('price_forecasting_title')}</h1>
-      </div>
+        <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1.5rem', marginBottom: '2.5rem' }}>
+            <div style={{ background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(10px)', padding: '1rem 2.5rem', borderRadius: '1.5rem', border: '1px solid rgba(255, 255, 255, 0.6)', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)' }}>
+                <h1 className="text-center" style={{ margin: 0, fontSize: '2.5rem', fontWeight: '900', color: '#111827', textShadow: '0 1px 2px rgba(255,255,255,1)' }}>{t('price_forecasting_title')}</h1>
+            </div>
+        </div>
 
       {/* Selection Form Section - Aligned with CropRecommendation theme */}
       <div className="card" style={{ maxWidth: '800px', margin: '0 auto 2.5rem', borderRadius: '16px' }}>
@@ -331,6 +334,7 @@ const PriceForecasting = () => {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 };
